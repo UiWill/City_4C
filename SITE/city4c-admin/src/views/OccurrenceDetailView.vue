@@ -101,9 +101,26 @@
                 Seu navegador não suporta o elemento de vídeo.
               </video>
               <div v-if="videoError" class="video-error">
-                <p>⚠️ Arquivo de vídeo não encontrado no storage.</p>
-                <p class="error-details">Este vídeo pode ter sido criptografado ou movido. Carregando vídeo de demonstração...</p>
-                <button @click="loadDemoVideo" class="btn btn-primary">🎬 Assistir Vídeo Demo</button>
+                <p>🔒 Vídeo Protegido por Criptografia</p>
+                <p class="error-details">Este vídeo foi criptografado pelo aplicativo móvel para segurança. O sistema web atual não tem as chaves de descriptografia. Carregando vídeo de demonstração...</p>
+                <div class="error-actions">
+                  <button @click="loadDemoVideo" class="btn btn-primary">🎬 Assistir Vídeo Demo</button>
+                  <button @click="showTechnicalInfo = !showTechnicalInfo" class="btn btn-secondary">
+                    {{ showTechnicalInfo ? 'Ocultar' : 'Ver' }} Detalhes Técnicos
+                  </button>
+                </div>
+                <div v-if="showTechnicalInfo" class="technical-info">
+                  <h4>Informações Técnicas:</h4>
+                  <ul>
+                    <li><strong>Arquivo encontrado:</strong> ✅ Sim ({{ videoTechnicalInfo.filename }})</li>
+                    <li><strong>Tamanho:</strong> {{ videoTechnicalInfo.size }} bytes</li>
+                    <li><strong>Formato:</strong> .dat (criptografado)</li>
+                    <li><strong>Status:</strong> {{ videoTechnicalInfo.status }}</li>
+                  </ul>
+                  <p class="tech-note">
+                    💡 Para reproduzir este vídeo, seria necessário implementar a descriptografia no frontend ou ter uma API que descriptografe os arquivos.
+                  </p>
+                </div>
               </div>
               
               <div class="video-info">
@@ -450,6 +467,12 @@ const serviceOrderStatus = ref<ServiceOrderStatus>('created' as ServiceOrderStat
 
 const videoPlayer = ref<HTMLVideoElement>()
 const videoError = ref(false)
+const showTechnicalInfo = ref(false)
+const videoTechnicalInfo = ref({
+  filename: '',
+  size: 0,
+  status: 'Não verificado'
+})
 
 const loadOccurrence = async () => {
   isLoading.value = true
@@ -481,9 +504,35 @@ const loadOccurrence = async () => {
         
         // Try to get signed URL for the found file
         const videoUrl = await ApiService.getVideoSignedUrl(filenameToUse)
-        if (occurrence.value) {
-          occurrence.value.video_url = videoUrl
-          videoError.value = false
+        
+        // Update technical info
+        videoTechnicalInfo.value.filename = filenameToUse
+        videoTechnicalInfo.value.status = 'Arquivo encontrado e URL gerada'
+        
+        // Check if it's an encrypted file
+        if (filenameToUse.includes('.dat')) {
+          console.log('Detected encrypted file, will show error with technical details')
+          videoError.value = true
+          videoTechnicalInfo.value.status = 'Arquivo criptografado detectado'
+          
+          // Try to get file size
+          try {
+            const response = await fetch(videoUrl, { method: 'HEAD' })
+            videoTechnicalInfo.value.size = parseInt(response.headers.get('content-length') || '0')
+          } catch (e) {
+            console.log('Could not get file size')
+          }
+          
+          // Set demo video
+          if (occurrence.value) {
+            occurrence.value.video_url = 'https://sample-videos.com/zip/10/mp4/720/SampleVideo_720x480_1mb.mp4'
+          }
+        } else {
+          // Regular video file
+          if (occurrence.value) {
+            occurrence.value.video_url = videoUrl
+            videoError.value = false
+          }
         }
       } catch (err) {
         console.log('Video loading failed completely, using demo video')
@@ -918,6 +967,60 @@ onMounted(() => {
   font-size: 0.875rem;
   color: #6b7280 !important;
   margin-bottom: 1rem !important;
+}
+
+.error-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.technical-info {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.technical-info h4 {
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.technical-info ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.75rem 0;
+}
+
+.technical-info li {
+  color: #374151;
+  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.technical-info li:before {
+  content: "•";
+  color: #3b82f6;
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+}
+
+.tech-note {
+  background: #eff6ff;
+  border-left: 4px solid #3b82f6;
+  padding: 0.75rem;
+  margin: 0;
+  font-size: 0.8rem;
+  color: #1e40af;
+  border-radius: 0 6px 6px 0;
 }
 
 /* Description */
