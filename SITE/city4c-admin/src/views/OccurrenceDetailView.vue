@@ -101,8 +101,9 @@
                 Seu navegador não suporta o elemento de vídeo.
               </video>
               <div v-if="videoError" class="video-error">
-                <p>⚠️ Erro ao carregar vídeo. Usando vídeo de demonstração.</p>
-                <button @click="loadDemoVideo" class="btn btn-primary">Carregar Vídeo Demo</button>
+                <p>⚠️ Arquivo de vídeo não encontrado no storage.</p>
+                <p class="error-details">Este vídeo pode ter sido criptografado ou movido. Carregando vídeo de demonstração...</p>
+                <button @click="loadDemoVideo" class="btn btn-primary">🎬 Assistir Vídeo Demo</button>
               </div>
               
               <div class="video-info">
@@ -461,16 +462,43 @@ const loadOccurrence = async () => {
     currentPriority.value = data.priority
     assignedTo.value = data.assigned_to || ''
 
-    // Load video with proper URL
-    if (data.video_filename) {
+    // Load video with intelligent file detection
+    if (data.video_filename || data.video_url) {
       try {
-        const videoUrl = await ApiService.getVideoSignedUrl(data.video_filename)
+        let actualFilename = data.video_filename
+        
+        // If we have a video_url but no filename, extract from URL
+        if (!actualFilename && data.video_url) {
+          const urlParts = data.video_url.split('/')
+          actualFilename = urlParts[urlParts.length - 1]
+        }
+        
+        // Try to find the actual video file in storage
+        const foundFile = await ApiService.findVideoFile(actualFilename)
+        const filenameToUse = foundFile || actualFilename
+        
+        console.log('Attempting to load video:', filenameToUse)
+        
+        // Try to get signed URL for the found file
+        const videoUrl = await ApiService.getVideoSignedUrl(filenameToUse)
         if (occurrence.value) {
           occurrence.value.video_url = videoUrl
+          videoError.value = false
         }
       } catch (err) {
-        console.log('Video loading failed, using demo video')
+        console.log('Video loading failed completely, using demo video')
         videoError.value = true
+        // Set demo video immediately
+        if (occurrence.value) {
+          occurrence.value.video_url = 'https://sample-videos.com/zip/10/mp4/720/SampleVideo_720x480_1mb.mp4'
+        }
+      }
+    } else {
+      // No video info available, show demo
+      console.log('No video information available, using demo')
+      videoError.value = true
+      if (occurrence.value) {
+        occurrence.value.video_url = 'https://sample-videos.com/zip/10/mp4/720/SampleVideo_720x480_1mb.mp4'
       }
     }
   } catch (err: any) {
@@ -565,10 +593,15 @@ const onVideoError = () => {
 }
 
 const loadDemoVideo = () => {
-  if (videoPlayer.value && occurrence.value) {
+  if (occurrence.value) {
     // Use a working demo video URL
-    videoPlayer.value.src = 'https://sample-videos.com/zip/10/mp4/720/SampleVideo_720x480_1mb.mp4'
+    occurrence.value.video_url = 'https://sample-videos.com/zip/10/mp4/720/SampleVideo_720x480_1mb.mp4'
     videoError.value = false
+    
+    // Force video player reload
+    if (videoPlayer.value) {
+      videoPlayer.value.load()
+    }
   }
 }
 
@@ -865,6 +898,26 @@ onMounted(() => {
   gap: 1rem;
   font-size: 0.875rem;
   color: #6b7280;
+}
+
+.video-error {
+  padding: 1.5rem;
+  background: #fef2f2;
+  border: 2px solid #fecaca;
+  border-radius: 12px;
+  text-align: center;
+  color: #dc2626;
+  margin-top: 1rem;
+}
+
+.video-error p {
+  margin: 0 0 0.5rem 0;
+}
+
+.error-details {
+  font-size: 0.875rem;
+  color: #6b7280 !important;
+  margin-bottom: 1rem !important;
 }
 
 /* Description */

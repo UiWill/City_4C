@@ -314,17 +314,83 @@ export class ApiService {
   }
 
   static async getVideoSignedUrl(filename: string): Promise<string> {
+    // Try signed URL first
     const { data, error } = await supabase.storage
       .from('occurrence-videos')
       .createSignedUrl(filename, 3600) // 1 hour expiry
 
     if (error) {
-      console.error('Error creating signed URL:', error)
-      // Fallback to demo video
-      return 'https://sample-videos.com/zip/10/mp4/720/SampleVideo_720x480_1mb.mp4'
+      console.error('Error creating signed URL for', filename, ':', error)
+      
+      // Try public URL as fallback
+      const publicUrl = supabase.storage
+        .from('occurrence-videos')
+        .getPublicUrl(filename)
+      
+      console.log('Trying public URL:', publicUrl.data.publicUrl)
+      
+      // Test if public URL works by making a HEAD request
+      try {
+        const response = await fetch(publicUrl.data.publicUrl, { method: 'HEAD' })
+        if (response.ok) {
+          return publicUrl.data.publicUrl
+        }
+      } catch (fetchError) {
+        console.log('Public URL also failed:', fetchError)
+      }
+      
+      // Final fallback to demo video
+      throw new Error('Video file not accessible')
     }
 
     return data.signedUrl
+  }
+
+  static async findVideoFile(originalFilename: string): Promise<string | null> {
+    try {
+      // List all files in the storage bucket
+      const { data: files, error } = await supabase.storage
+        .from('occurrence-videos')
+        .list('', {
+          limit: 1000,
+          sortBy: { column: 'created_at', order: 'desc' }
+        })
+
+      if (error) {
+        console.error('Error listing files:', error)
+        return null
+      }
+
+      console.log('Found files in storage:', files?.map(f => f.name) || [])
+
+      // Try to find a file that matches the original filename or timestamp
+      const timestamp = originalFilename.match(/\d+/)?.[0]
+      
+      if (timestamp && files) {
+        // Look for encrypted files with similar timestamp
+        const matchingFile = files.find(file => 
+          file.name.includes(timestamp) || 
+          file.name.includes('enc_') ||
+          file.name === originalFilename
+        )
+        
+        if (matchingFile) {
+          console.log('Found matching file:', matchingFile.name)
+          return matchingFile.name
+        }
+      }
+
+      // If no timestamp match, return the most recent file
+      if (files && files.length > 0) {
+        console.log('Using most recent file:', files[0].name)
+        return files[0].name
+      }
+
+      return null
+    } catch (error) {
+      console.error('Error finding video file:', error)
+      return null
+    }
   }
 
   // Nearby occurrences
