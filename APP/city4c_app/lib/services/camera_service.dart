@@ -125,4 +125,16 @@ class CameraService {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     return 'video_$timestamp.mp4';
   }
+
+  /// Gets video file size in bytes
+  static Future<int> getVideoFileSize(String filePath) async {
+    try {
+      final file = File(filePath);
+      final stat = await file.stat();
+      return stat.size;
+    } catch (e) {
+      print('❌ Erro ao obter tamanho do arquivo: $e');
+      return 0;
+    }
+  }
 }

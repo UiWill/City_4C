@@ -1,10 +1,8 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/occurrence.dart';
 import '../models/tag.dart';
-import 'encryption_service.dart';
 
 class SupabaseService {
   static SupabaseService? _instance;
@@ -142,26 +140,35 @@ class SupabaseService {
     }
   }
 
-  // Storage with encryption
+  // Storage without encryption (MVP mode)
   Future<String> uploadVideo(String filePath, String fileName) async {
     try {
-      // Encrypt video data before upload
-      final encryptedData = await EncryptionService.instance.encryptVideoData(filePath);
+      print('📤 Fazendo upload do vídeo sem criptografia (modo MVP)...');
       
-      // Generate secure filename
-      final secureFileName = EncryptionService.instance.generateSecureFilename(fileName);
+      // Read video file directly (no encryption)
+      final file = File(filePath);
+      final videoBytes = await file.readAsBytes();
       
-      // Upload encrypted data
+      // Generate simple filename with timestamp
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final simpleFileName = 'video_$timestamp.mp4';
+      
+      print('📁 Nome do arquivo: $simpleFileName');
+      print('📊 Tamanho do arquivo: ${videoBytes.length} bytes');
+      
+      // Upload raw video data
       await client.storage
           .from(SupabaseConfig.videoBucket)
-          .uploadBinary(secureFileName, encryptedData);
+          .uploadBinary(simpleFileName, videoBytes);
       
       final url = client.storage
           .from(SupabaseConfig.videoBucket)
-          .getPublicUrl(secureFileName);
+          .getPublicUrl(simpleFileName);
       
+      print('✅ Upload concluído! URL: $url');
       return url;
     } catch (e) {
+      print('❌ Erro no upload: $e');
       throw Exception('Erro ao fazer upload do vídeo: $e');
     }
   }

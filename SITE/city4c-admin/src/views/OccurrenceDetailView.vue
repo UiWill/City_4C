@@ -744,8 +744,11 @@ onMounted(() => {
 <style scoped>
 .occurrence-detail {
   width: 100%;
-  height: 100%;
-  padding: 0;
+  min-height: 100%;
+  padding: 1rem;
+  overflow-y: auto; /* Permite scroll quando necessário */
+  max-width: 1400px;
+  margin: 0 auto; /* Centraliza o conteúdo */
 }
 
 /* Loading and Error States */
@@ -872,8 +875,14 @@ onMounted(() => {
 /* Main Content */
 .main-content {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr;
   gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .main-content {
+    grid-template-columns: 2fr 1fr;
+  }
 }
 
 .left-column,
@@ -929,13 +938,17 @@ onMounted(() => {
 /* Video Section */
 .video-container {
   width: 100%;
+  max-width: 800px; /* Limita o tamanho máximo */
 }
 
 .video-player {
   width: 100%;
+  max-width: 800px; /* Tamanho máximo do vídeo */
   height: auto;
+  max-height: 450px; /* Altura máxima equivalente a 16:9 de 800px */
   border-radius: 8px;
   background: #000;
+  object-fit: contain; /* Mantém proporção sem cortar */
 }
 
 .video-info {
@@ -1240,17 +1253,27 @@ onMounted(() => {
 }
 
 @media (max-width: 1024px) {
-  .main-content {
-    grid-template-columns: 1fr;
+  .occurrence-detail {
+    padding: 0.5rem;
   }
   
   .occurrence-header {
     flex-direction: column;
     align-items: stretch;
+    padding: 1rem;
   }
   
   .header-actions {
     justify-content: stretch;
+  }
+  
+  .video-container {
+    max-width: 100%;
+  }
+  
+  .video-player {
+    max-width: 100%;
+    max-height: 300px; /* Altura menor em mobile */
   }
 }
 
