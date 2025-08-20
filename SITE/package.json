@@ -1,0 +1,16 @@
+{
+  "name": "city4c-site",
+  "version": "1.0.0",
+  "description": "CITY 4C Administrative Site",
+  "scripts": {
+    "dev": "cd city4c-admin && npm run dev",
+    "build": "cd city4c-admin && npm run build",
+    "preview": "cd city4c-admin && npm run preview",
+    "install": "cd city4c-admin && npm install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/UiWill/City_4C.git"
+  },
+  "private": true
+}

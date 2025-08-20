@@ -335,19 +335,5 @@ const toggleSidebar = () => {
   overflow-y: auto;
 }
 
-@media (max-width: 768px) {
-  .sidebar {
-    transform: translateX(-100%);
-    width: 280px;
-  }
-  
-  .sidebar--collapsed {
-    transform: translateX(0);
-    width: 64px;
-  }
-  
-  .main-content {
-    margin-left: 0;
-  }
-}
+/* Desktop-first design - remove mobile transforms */
 </style>

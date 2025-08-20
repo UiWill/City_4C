@@ -91,14 +91,19 @@
             <div class="video-container">
               <video 
                 ref="videoPlayer"
-                :src="videoUrl" 
+                :src="occurrence.video_url" 
                 controls 
                 preload="metadata"
                 class="video-player"
                 @loadedmetadata="onVideoLoaded"
+                @error="onVideoError"
               >
                 Seu navegador não suporta o elemento de vídeo.
               </video>
+              <div v-if="videoError" class="video-error">
+                <p>⚠️ Erro ao carregar vídeo. Usando vídeo de demonstração.</p>
+                <button @click="loadDemoVideo" class="btn btn-primary">Carregar Vídeo Demo</button>
+              </div>
               
               <div class="video-info">
                 <div class="video-meta">
@@ -443,11 +448,7 @@ const assignedTo = ref('')
 const serviceOrderStatus = ref<ServiceOrderStatus>('created' as ServiceOrderStatus)
 
 const videoPlayer = ref<HTMLVideoElement>()
-
-const videoUrl = computed(() => {
-  if (!occurrence.value) return ''
-  return ApiService.getVideoUrl(occurrence.value.video_filename)
-})
+const videoError = ref(false)
 
 const loadOccurrence = async () => {
   isLoading.value = true
@@ -541,6 +542,20 @@ const addComment = async () => {
 const onVideoLoaded = () => {
   if (videoPlayer.value) {
     videoDuration.value = Math.round(videoPlayer.value.duration).toString()
+    videoError.value = false
+  }
+}
+
+const onVideoError = () => {
+  videoError.value = true
+  console.log('Video loading error - this is expected for demo purposes')
+}
+
+const loadDemoVideo = () => {
+  if (videoPlayer.value && occurrence.value) {
+    // Use a working demo video URL
+    videoPlayer.value.src = 'https://sample-videos.com/zip/10/mp4/720/SampleVideo_720x480_1mb.mp4'
+    videoError.value = false
   }
 }
 
