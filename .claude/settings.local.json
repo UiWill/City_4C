@@ -19,7 +19,9 @@
       "Bash(grep:*)",
       "Bash(mv:*)",
       "Bash(rm:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(cp:*)",
+      "Bash(sips:*)"
     ],
     "deny": []
   }

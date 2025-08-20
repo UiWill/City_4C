@@ -598,6 +598,8 @@ onMounted(async () => {
 .occurrences-table td {
   padding: 1rem 1.5rem;
   vertical-align: top;
+  color: #1f2937;
+  font-weight: 500;
 }
 
 /* Status Badge */
@@ -682,6 +684,13 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+.location-info span {
+  font-size: 0.875rem;
+  color: #374151;
 }
 
 .location-icon {

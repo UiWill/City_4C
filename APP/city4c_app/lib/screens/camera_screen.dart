@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../services/camera_service.dart';
 import '../services/location_service.dart';
 import '../services/supabase_service.dart';
+import '../services/noise_meter_service.dart';
 import '../config/supabase_config.dart';
 import '../main.dart';
 import 'tag_selection_screen.dart';
@@ -21,18 +22,26 @@ class CameraScreen extends StatefulWidget {
 
 class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver {
   final CameraService _cameraService = CameraService.instance;
+  final NoiseMeterService _noiseMeterService = NoiseMeterService();
   Timer? _recordingTimer;
   int _recordingSeconds = 0;
   bool _isRecording = false;
   String? _videoPath;
   bool _isDisposed = false;
   bool _isNavigating = false;
+  
+  // Noise meter variables
+  double _currentDecibel = 0.0;
+  double _maxDecibel = 0.0;
+  double _avgDecibel = 0.0;
+  StreamSubscription<double>? _decibelSubscription;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initializeCamera();
+    _initializeNoiseMeter();
   }
 
   Future<void> _initializeCamera() async {
@@ -44,12 +53,27 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     }
   }
 
+  Future<void> _initializeNoiseMeter() async {
+    try {
+      final initialized = await _noiseMeterService.initialize();
+      if (initialized) {
+        print('✅ Medidor de ruído pronto');
+      } else {
+        print('⚠️ Medidor de ruído não disponível');
+      }
+    } catch (e) {
+      print('❌ Erro ao inicializar medidor de ruído: $e');
+    }
+  }
+
   @override
   void dispose() {
     print('🗑️ Disposing camera screen...');
     _isDisposed = true;
     WidgetsBinding.instance.removeObserver(this);
     _recordingTimer?.cancel();
+    _decibelSubscription?.cancel();
+    _noiseMeterService.dispose();
     
     // Não dispose o camera service aqui se estivermos navegando
     if (!_isNavigating) {
@@ -153,6 +177,39 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // Noise meter overlay
+        if (_isRecording)
+          Positioned(
+            top: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.graphic_eq,
+                    color: _getDecibelColor(_currentDecibel),
+                    size: 12,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${_currentDecibel.toStringAsFixed(0)}dB',
+                    style: TextStyle(
+                      color: _getDecibelColor(_currentDecibel),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -304,9 +361,26 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
       print('🎥 Iniciando gravação...');
       await _cameraService.startVideoRecording();
       
+      // Iniciar medição de ruído
+      await _noiseMeterService.startListening();
+      
+      // Setup decibel stream listener
+      _decibelSubscription = _noiseMeterService.decibelStream?.listen((decibel) {
+        if (mounted && _isRecording) {
+          setState(() {
+            _currentDecibel = decibel;
+            _maxDecibel = _noiseMeterService.maxDecibel;
+            _avgDecibel = _noiseMeterService.avgDecibel;
+          });
+        }
+      });
+      
       setState(() {
         _isRecording = true;
         _recordingSeconds = 0;
+        _currentDecibel = 0.0;
+        _maxDecibel = 0.0;
+        _avgDecibel = 0.0;
       });
 
       print('⏱️ Timer de gravação iniciado');
@@ -316,7 +390,7 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
             _recordingSeconds++;
           });
 
-          print('⏱️ Gravando: ${_recordingSeconds}s');
+          print('⏱️ Gravando: ${_recordingSeconds}s - Ruído: ${_currentDecibel.toStringAsFixed(1)}dB');
 
           if (_recordingSeconds >= SupabaseConfig.maxVideoDurationSeconds) {
             print('⏰ Tempo máximo atingido, parando gravação');
@@ -341,6 +415,17 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
       // Para o timer primeiro
       _recordingTimer?.cancel();
       _recordingTimer = null;
+      
+      // Para medição de ruído e pega estatísticas finais
+      await _noiseMeterService.stopListening();
+      _decibelSubscription?.cancel();
+      final noiseStats = _noiseMeterService.getStatistics();
+      
+      print('📊 Estatísticas de ruído:');
+      print('   - Atual: ${noiseStats['current_db'].toStringAsFixed(1)} dB');
+      print('   - Máximo: ${noiseStats['max_db'].toStringAsFixed(1)} dB');
+      print('   - Média: ${noiseStats['avg_db'].toStringAsFixed(1)} dB');
+      print('   - Nível: ${noiseStats['noise_level']}');
 
       final video = await _cameraService.stopVideoRecording();
 
@@ -409,6 +494,7 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
           builder: (context) => TagSelectionScreen(
             videoPath: videoPath,
             isAgent: widget.isAgent,
+            noiseData: _noiseMeterService.getStatistics(),
           ),
         ),
       );
@@ -430,6 +516,15 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     } catch (e) {
       _showError('Erro ao trocar câmera: $e');
     }
+  }
+
+  Color _getDecibelColor(double decibel) {
+    if (decibel < 30) return Colors.green;
+    if (decibel < 50) return Colors.lightGreen;
+    if (decibel < 60) return Colors.yellow;
+    if (decibel < 70) return Colors.orange;
+    if (decibel < 80) return Colors.deepOrange;
+    return Colors.red;
   }
 
   void _showError(String message) {

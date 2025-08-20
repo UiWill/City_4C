@@ -38,6 +38,9 @@ dependencies:
   camera: ^0.10.6
   video_player: ^2.9.2
   
+  # Audio recording and measurement
+  noise_meter: ^5.0.2
+  
   # Location
   geolocator: ^9.0.2
   geocoding: ^2.1.1

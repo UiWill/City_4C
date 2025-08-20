@@ -13,11 +13,13 @@ import '../components/location_preview.dart';
 class TagSelectionScreen extends StatefulWidget {
   final String videoPath;
   final bool isAgent;
+  final Map<String, dynamic>? noiseData;
 
   const TagSelectionScreen({
     super.key,
     required this.videoPath,
     required this.isAgent,
+    this.noiseData,
   });
 
   @override
@@ -556,6 +558,7 @@ class _TagSelectionScreenState extends State<TagSelectionScreen> with WidgetsBin
           },
           'app_version': '1.0.0',
           'submission_timestamp': DateTime.now().toIso8601String(),
+          if (widget.noiseData != null) 'noise_data': widget.noiseData,
         },
       );
 

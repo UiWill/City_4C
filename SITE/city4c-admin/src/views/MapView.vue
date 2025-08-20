@@ -38,45 +38,8 @@
 
     <!-- Map Container -->
     <div class="map-container">
-      <!-- Map Placeholder -->
-      <div class="map-placeholder">
-        <div class="map-content">
-          <svg class="map-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5z"/>
-          </svg>
-          <h3>Mapa Interativo</h3>
-          <p>Esta funcionalidade será implementada com Leaflet/OpenStreetMap na versão completa.</p>
-          <p>As ocorrências aparecerão como marcadores coloridos baseados no status.</p>
-        </div>
-
-        <!-- Mock markers for visualization -->
-        <div class="mock-markers">
-          <div 
-            v-for="(occurrence, index) in filteredOccurrences.slice(0, 10)" 
-            :key="occurrence.id"
-            class="mock-marker"
-            :class="`marker--${occurrence.status.replace('_', '-')}`"
-            :style="getMockMarkerPosition(index)"
-            @click="selectOccurrence(occurrence)"
-          >
-            <div class="marker-icon">
-              <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-              </svg>
-            </div>
-            <div class="marker-tooltip">
-              <div class="tooltip-content">
-                <h4>{{ occurrence.title || 'Ocorrência sem título' }}</h4>
-                <p v-if="occurrence.tags">{{ occurrence.tags.name }}</p>
-                <p class="coordinates">
-                  {{ occurrence.latitude.toFixed(4) }}, {{ occurrence.longitude.toFixed(4) }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+      <div ref="mapContainer" class="leaflet-map"></div>
+      
       <!-- Legend -->
       <div class="map-legend">
         <h4>Legenda</h4>
@@ -180,12 +143,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ApiService } from '@/services/api'
 import type { Occurrence, Tag, OccurrenceStatus } from '@/types'
+import L from 'leaflet'
+
+// Import Leaflet CSS
+import 'leaflet/dist/leaflet.css'
+
+// Fix for default markers
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
 
 const router = useRouter()
 
@@ -193,6 +168,9 @@ const occurrences = ref<Occurrence[]>([])
 const tags = ref<Tag[]>([])
 const selectedOccurrence = ref<Occurrence | null>(null)
 const isLoading = ref(false)
+const mapContainer = ref<HTMLElement | null>(null)
+let map: L.Map | null = null
+let markersLayer: L.LayerGroup | null = null
 
 const filters = reactive({
   status: '' as OccurrenceStatus | '',
@@ -245,22 +223,117 @@ const goToOccurrence = (id: string) => {
   router.push(`/occurrences/${id}`)
 }
 
-const getMockMarkerPosition = (index: number) => {
-  // Generate pseudo-random positions for demo
-  const positions = [
-    { top: '20%', left: '30%' },
-    { top: '40%', left: '60%' },
-    { top: '60%', left: '25%' },
-    { top: '35%', left: '80%' },
-    { top: '70%', left: '50%' },
-    { top: '25%', left: '70%' },
-    { top: '55%', left: '40%' },
-    { top: '80%', left: '35%' },
-    { top: '15%', left: '55%' },
-    { top: '45%', left: '15%' }
-  ]
+const initializeMap = async () => {
+  if (!mapContainer.value) return
   
-  return positions[index % positions.length]
+  try {
+    // Initialize map centered on Brazil
+    map = L.map(mapContainer.value, {
+      zoomControl: true,
+      attributionControl: false
+    }).setView([-15.7942, -47.8822], 4) // Brasília, Brazil
+    
+    // Add tile layer (OpenStreetMap)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '',
+      maxZoom: 18
+    }).addTo(map)
+    
+    // Initialize markers layer
+    markersLayer = L.layerGroup().addTo(map)
+    
+    // Add markers for occurrences
+    updateMapMarkers()
+    
+    console.log('✅ Mapa inicializado com sucesso')
+  } catch (error) {
+    console.error('❌ Erro ao inicializar mapa:', error)
+  }
+}
+
+const updateMapMarkers = () => {
+  if (!map || !markersLayer) return
+  
+  // Clear existing markers
+  markersLayer.clearLayers()
+  
+  // Add marker for each occurrence
+  filteredOccurrences.value.forEach(occurrence => {
+    const marker = createMarkerForOccurrence(occurrence)
+    if (marker) {
+      markersLayer!.addLayer(marker)
+    }
+  })
+  
+  // Fit map to show all markers if we have occurrences
+  if (filteredOccurrences.value.length > 0) {
+    const group = new L.FeatureGroup(markersLayer.getLayers() as L.Layer[])
+    if (group.getLayers().length > 0) {
+      map.fitBounds(group.getBounds(), { padding: [20, 20] })
+    }
+  }
+}
+
+const createMarkerForOccurrence = (occurrence: Occurrence) => {
+  if (!occurrence.latitude || !occurrence.longitude) return null
+  
+  // Create custom icon based on status
+  const iconColor = getStatusColor(occurrence.status)
+  const customIcon = L.divIcon({
+    className: 'custom-marker',
+    html: `
+      <div class="marker-pin" style="background-color: ${iconColor};">
+        <div class="marker-pulse"></div>
+      </div>
+    `,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15]
+  })
+  
+  const marker = L.marker([occurrence.latitude, occurrence.longitude], {
+    icon: customIcon
+  })
+  
+  // Create popup content
+  const popupContent = `
+    <div class="occurrence-popup">
+      <h4>${occurrence.title || 'Ocorrência sem título'}</h4>
+      ${occurrence.tags ? `<p class="popup-tag"><strong>Categoria:</strong> ${occurrence.tags.name}</p>` : ''}
+      <p class="popup-status"><strong>Status:</strong> ${getStatusLabel(occurrence.status)}</p>
+      ${occurrence.address ? `<p class="popup-address"><strong>Endereço:</strong> ${occurrence.address}</p>` : ''}
+      <p class="popup-coords">
+        <strong>Coordenadas:</strong> ${occurrence.latitude.toFixed(6)}, ${occurrence.longitude.toFixed(6)}
+      </p>
+      <p class="popup-date">
+        <strong>Data:</strong> ${formatDate(occurrence.created_at)}
+      </p>
+      <div class="popup-actions">
+        <button 
+          onclick="window.location.href='#/occurrences/${occurrence.id}'"
+          class="popup-btn"
+        >
+          Ver Detalhes
+        </button>
+      </div>
+    </div>
+  `
+  
+  marker.bindPopup(popupContent, {
+    maxWidth: 300,
+    className: 'custom-popup'
+  })
+  
+  return marker
+}
+
+const getStatusColor = (status: string) => {
+  const colors: Record<string, string> = {
+    pending: '#f59e0b',
+    in_progress: '#3b82f6',
+    resolved: '#10b981',
+    rejected: '#ef4444'
+  }
+  return colors[status] || '#6b7280'
 }
 
 const formatDate = (dateString: string) => {
@@ -279,11 +352,27 @@ const getStatusLabel = (status: string) => {
 
 watch(filters, () => {
   selectedOccurrence.value = null
+  updateMapMarkers()
 }, { deep: true })
 
-onMounted(() => {
-  loadTags()
-  loadOccurrences()
+watch(occurrences, () => {
+  updateMapMarkers()
+})
+
+onMounted(async () => {
+  await loadTags()
+  await loadOccurrences()
+  
+  await nextTick()
+  await initializeMap()
+})
+
+onBeforeUnmount(() => {
+  if (map) {
+    map.remove()
+    map = null
+  }
+  markersLayer = null
 })
 </script>
 
@@ -341,141 +430,116 @@ onMounted(() => {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
-.map-placeholder {
+.leaflet-map {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-.map-content {
-  text-align: center;
-  color: #6b7280;
-  z-index: 1;
+/* Custom Marker Styles */
+:global(.custom-marker) {
+  background: transparent !important;
+  border: none !important;
+  margin: 0 !important;
 }
 
-.map-icon {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 1rem;
-  display: block;
-  color: #9ca3af;
-}
-
-.map-content h3 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #374151;
-  margin: 0 0 1rem 0;
-}
-
-.map-content p {
-  max-width: 400px;
-  line-height: 1.6;
-  margin: 0 0 0.5rem 0;
-}
-
-/* Mock Markers */
-.mock-markers {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.mock-marker {
-  position: absolute;
-  pointer-events: all;
-  cursor: pointer;
-  transform: translate(-50%, -100%);
-  z-index: 10;
-}
-
-.marker-icon {
-  width: 24px;
-  height: 24px;
+:global(.marker-pin) {
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  border: 2px solid white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
   transition: transform 0.2s;
 }
 
-.mock-marker:hover .marker-icon {
+:global(.marker-pin:hover) {
   transform: scale(1.2);
 }
 
-.marker-icon svg {
-  width: 16px;
-  height: 16px;
-  color: white;
-}
-
-.marker--pending .marker-icon {
-  background: #f59e0b;
-}
-
-.marker--in-progress .marker-icon {
-  background: #3b82f6;
-}
-
-.marker--resolved .marker-icon {
-  background: #10b981;
-}
-
-.marker--rejected .marker-icon {
-  background: #ef4444;
-}
-
-/* Marker Tooltips */
-.marker-tooltip {
+:global(.marker-pulse) {
   position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-bottom: 0.5rem;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
   opacity: 0;
-  visibility: hidden;
-  transition: all 0.2s;
-  pointer-events: none;
+  animation: pulse 2s infinite;
 }
 
-.mock-marker:hover .marker-tooltip {
-  opacity: 1;
-  visibility: visible;
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2);
+  }
 }
 
-.tooltip-content {
-  background: white;
-  border-radius: 6px;
-  padding: 0.75rem;
+/* Custom Popup Styles */
+:global(.custom-popup .leaflet-popup-content-wrapper) {
+  border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  white-space: nowrap;
-  border: 1px solid #e5e7eb;
 }
 
-.tooltip-content h4 {
-  font-size: 0.875rem;
+:global(.occurrence-popup) {
+  padding: 0.5rem 0;
+}
+
+:global(.occurrence-popup h4) {
+  font-size: 1rem;
   font-weight: 600;
   color: #1f2937;
-  margin: 0 0 0.25rem 0;
+  margin: 0 0 0.5rem 0;
 }
 
-.tooltip-content p {
-  font-size: 0.75rem;
+:global(.occurrence-popup p) {
+  font-size: 0.875rem;
   color: #6b7280;
-  margin: 0;
+  margin: 0.25rem 0;
+  line-height: 1.4;
 }
 
-.coordinates {
+:global(.popup-tag) {
+  color: #374151 !important;
+}
+
+:global(.popup-status) {
+  color: #374151 !important;
+  font-weight: 500;
+}
+
+:global(.popup-coords) {
   font-family: monospace;
-  font-size: 0.7rem;
+  font-size: 0.75rem !important;
+  color: #6b7280 !important;
+}
+
+:global(.popup-actions) {
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+:global(.popup-btn) {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+:global(.popup-btn:hover) {
+  background: #1d4ed8;
 }
 
 /* Legend */

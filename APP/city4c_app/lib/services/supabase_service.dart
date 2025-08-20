@@ -173,6 +173,36 @@ class SupabaseService {
     }
   }
 
+  // Get nearby occurrences
+  Future<List<Map<String, dynamic>>> getNearbyOccurrences(
+    double latitude,
+    double longitude,
+    double radiusKm,
+  ) async {
+    try {
+      print('🔍 Buscando ocorrências próximas...');
+      print('📍 Lat: $latitude, Lng: $longitude, Raio: ${radiusKm}km');
+      
+      final response = await client.rpc('get_nearby_occurrences', params: {
+        'user_lat': latitude,
+        'user_lng': longitude,
+        'radius_km': radiusKm.toInt(),
+      });
+
+      if (response is List) {
+        final occurrences = List<Map<String, dynamic>>.from(response);
+        print('✅ Encontradas ${occurrences.length} ocorrências próximas');
+        return occurrences;
+      } else {
+        print('⚠️ Resposta inesperada do servidor');
+        return [];
+      }
+    } catch (e) {
+      print('❌ Erro ao buscar ocorrências próximas: $e');
+      throw Exception('Erro ao buscar ocorrências próximas: $e');
+    }
+  }
+
   // Auth
   Future<void> signInAnonymously() async {
     try {

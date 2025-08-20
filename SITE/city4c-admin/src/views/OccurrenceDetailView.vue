@@ -48,35 +48,62 @@
         </div>
 
         <div class="header-actions">
-          <div class="status-controls">
-            <label for="status-select" class="control-label">Status:</label>
-            <select 
-              id="status-select"
-              v-model="currentStatus" 
-              @change="updateStatus"
-              class="form-select"
-            >
-              <option value="pending">Pendente</option>
-              <option value="in_progress">Em Andamento</option>
-              <option value="resolved">Resolvido</option>
-              <option value="rejected">Rejeitado</option>
-            </select>
-          </div>
+          <div class="management-controls">
+            <div class="controls-row">
+              <div class="status-controls">
+                <label for="status-select" class="control-label">
+                  <svg class="label-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  Status:
+                </label>
+                <select 
+                  id="status-select"
+                  v-model="newStatus" 
+                  class="form-select status-select"
+                >
+                  <option value="pending">Pendente</option>
+                  <option value="in_progress">Em Andamento</option>
+                  <option value="resolved">Resolvido</option>
+                  <option value="rejected">Rejeitado</option>
+                </select>
+              </div>
 
-          <div class="priority-controls">
-            <label for="priority-select" class="control-label">Prioridade:</label>
-            <select 
-              id="priority-select"
-              v-model="currentPriority" 
-              @change="updatePriority"
-              class="form-select"
+              <div class="priority-controls">
+                <label for="priority-select" class="control-label">
+                  <svg class="label-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                  </svg>
+                  Prioridade:
+                </label>
+                <select 
+                  id="priority-select"
+                  v-model="newPriority" 
+                  class="form-select priority-select"
+                >
+                  <option value="1">Mínima</option>
+                  <option value="2">Baixa</option>
+                  <option value="3">Média</option>
+                  <option value="4">Alta</option>
+                  <option value="5">Crítica</option>
+                </select>
+              </div>
+            </div>
+            
+            <button 
+              @click="applyChanges"
+              :disabled="!hasChanges || isUpdating"
+              class="apply-button"
             >
-              <option value="1">Mínima</option>
-              <option value="2">Baixa</option>
-              <option value="3">Média</option>
-              <option value="4">Alta</option>
-              <option value="5">Crítica</option>
-            </select>
+              <svg v-if="isUpdating" class="spinner" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"/>
+                <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+              </svg>
+              <svg v-else class="check-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              {{ isUpdating ? 'Aplicando...' : 'Aplicar Alterações' }}
+            </button>
           </div>
         </div>
       </div>
@@ -211,33 +238,31 @@
           <div class="location-section">
             <h3>Localização</h3>
             <div class="location-content">
-              <!-- Map Placeholder -->
-              <div class="map-placeholder">
-                <div class="map-content">
-                  <svg class="map-icon" viewBox="0 0 24 24" fill="currentColor">
+              <!-- Interactive Map -->
+              <OccurrenceMap 
+                :occurrence="occurrence" 
+                size="large" 
+                :zoom="16"
+                class="occurrence-location-map"
+              />
+              
+              <!-- Address Info -->
+              <div v-if="occurrence.address || occurrence.latitude" class="location-summary">
+                <div class="location-item">
+                  <svg class="location-icon" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                   </svg>
-                  <p>Mapa Interativo</p>
-                  <small>{{ occurrence.latitude.toFixed(6) }}, {{ occurrence.longitude.toFixed(6) }}</small>
-                </div>
-              </div>
-
-              <div class="location-details">
-                <div class="detail-item">
-                  <span class="label">Coordenadas:</span>
-                  <span class="value coordinates">
-                    {{ occurrence.latitude.toFixed(6) }}, {{ occurrence.longitude.toFixed(6) }}
-                  </span>
+                  <div class="location-text">
+                    <span v-if="occurrence.address" class="address">{{ occurrence.address }}</span>
+                    <span class="coordinates">{{ occurrence.latitude.toFixed(6) }}, {{ occurrence.longitude.toFixed(6) }}</span>
+                  </div>
                 </div>
                 
-                <div v-if="occurrence.address" class="detail-item">
-                  <span class="label">Endereço:</span>
-                  <span class="value">{{ occurrence.address }}</span>
-                </div>
-                
-                <div v-if="occurrence.location_accuracy" class="detail-item">
-                  <span class="label">Precisão:</span>
-                  <span class="value">{{ occurrence.location_accuracy.toFixed(1) }}m</span>
+                <div v-if="occurrence.location_accuracy" class="precision-badge">
+                  <svg class="precision-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+                  </svg>
+                  <span>{{ occurrence.location_accuracy.toFixed(1) }}m de precisão</span>
                 </div>
               </div>
             </div>
@@ -422,6 +447,35 @@
                 <span class="label">Dispositivo:</span>
                 <span class="value">{{ occurrence.metadata.device_info?.platform || 'N/A' }}</span>
               </div>
+              
+              <!-- Noise Data Section -->
+              <div v-if="occurrence.metadata?.noise_data" class="detail-item noise-data-section">
+                <span class="label">Dados de Ruído:</span>
+                <div class="noise-stats">
+                  <div class="noise-stat">
+                    <span class="noise-label">Atual:</span>
+                    <span class="noise-value" :style="{ color: getDecibelColor(occurrence.metadata.noise_data.current_db) }">
+                      {{ occurrence.metadata.noise_data.current_db?.toFixed(1) || 'N/A' }} dB
+                    </span>
+                  </div>
+                  <div class="noise-stat">
+                    <span class="noise-label">Máximo:</span>
+                    <span class="noise-value" :style="{ color: getDecibelColor(occurrence.metadata.noise_data.max_db) }">
+                      {{ occurrence.metadata.noise_data.max_db?.toFixed(1) || 'N/A' }} dB
+                    </span>
+                  </div>
+                  <div class="noise-stat">
+                    <span class="noise-label">Média:</span>
+                    <span class="noise-value" :style="{ color: getDecibelColor(occurrence.metadata.noise_data.avg_db) }">
+                      {{ occurrence.metadata.noise_data.avg_db?.toFixed(1) || 'N/A' }} dB
+                    </span>
+                  </div>
+                  <div class="noise-stat">
+                    <span class="noise-label">Nível:</span>
+                    <span class="noise-level">{{ occurrence.metadata.noise_data.noise_level || 'N/A' }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -444,6 +498,7 @@ import type {
   ServiceOrder, 
   ServiceOrderStatus 
 } from '@/types'
+import OccurrenceMap from '@/components/OccurrenceMap.vue'
 
 const route = useRoute()
 const occurrenceId = route.params.id as string
@@ -462,6 +517,9 @@ const isExporting = ref(false)
 
 const currentStatus = ref<OccurrenceStatus>('pending' as OccurrenceStatus)
 const currentPriority = ref(1)
+const newStatus = ref<OccurrenceStatus>('pending' as OccurrenceStatus)
+const newPriority = ref(1)
+const isUpdating = ref(false)
 const assignedTo = ref('')
 const serviceOrderStatus = ref<ServiceOrderStatus>('created' as ServiceOrderStatus)
 
@@ -483,6 +541,8 @@ const loadOccurrence = async () => {
     occurrence.value = data
     currentStatus.value = data.status
     currentPriority.value = data.priority
+    newStatus.value = data.status
+    newPriority.value = data.priority
     assignedTo.value = data.assigned_to || ''
 
     // Load video with intelligent file detection
@@ -733,6 +793,61 @@ const getStatusLabel = (status: string) => {
   return labels[status] || status
 }
 
+const getPriorityLabel = (priority: number) => {
+  const labels: Record<number, string> = {
+    1: 'Mínima',
+    2: 'Baixa',
+    3: 'Média',
+    4: 'Alta',
+    5: 'Crítica'
+  }
+  return labels[priority] || 'Desconhecida'
+}
+
+const hasChanges = computed(() => {
+  return newStatus.value !== currentStatus.value || newPriority.value !== currentPriority.value
+})
+
+const applyChanges = async () => {
+  if (!hasChanges.value || isUpdating.value) return
+
+  isUpdating.value = true
+  try {
+    // Update status if changed
+    if (newStatus.value !== currentStatus.value) {
+      await ApiService.updateOccurrenceStatus(occurrenceId, newStatus.value)
+      currentStatus.value = newStatus.value
+    }
+
+    // Update priority if changed
+    if (newPriority.value !== currentPriority.value) {
+      await ApiService.updateOccurrencePriority(occurrenceId, newPriority.value)
+      currentPriority.value = newPriority.value
+    }
+
+    // Reload data to get latest updates
+    await loadOccurrence()
+    await loadUpdates()
+    await loadServiceOrder()
+
+    console.log('✅ Alterações aplicadas com sucesso')
+  } catch (err) {
+    console.error('❌ Erro ao aplicar alterações:', err)
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+const getDecibelColor = (decibel: number | undefined): string => {
+  if (!decibel) return '#6B7280'
+  if (decibel < 30) return '#10B981' // green
+  if (decibel < 50) return '#84CC16' // light green  
+  if (decibel < 60) return '#EAB308' // yellow
+  if (decibel < 70) return '#F97316' // orange
+  if (decibel < 80) return '#EF4444' // red
+  return '#DC2626' // dark red
+}
+
 onMounted(() => {
   loadOccurrence()
   loadUpdates()
@@ -855,12 +970,29 @@ onMounted(() => {
 
 .header-actions {
   display: flex;
-  gap: 1rem;
-  align-items: end;
+  justify-content: center;
+  width: 100%;
+}
+
+.management-controls {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  max-width: 600px;
+  width: 100%;
+}
+
+.controls-row {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .status-controls,
 .priority-controls {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -868,8 +1000,87 @@ onMounted(() => {
 
 .control-label {
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.label-icon {
+  width: 16px;
+  height: 16px;
+  color: #6b7280;
+}
+
+.status-select,
+.priority-select {
+  font-size: 0.875rem;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.status-select:focus,
+.priority-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.apply-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 44px;
+}
+
+.apply-button:hover:not(:disabled) {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+.apply-button:disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.check-icon,
+.spinner {
+  width: 16px;
+  height: 16px;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .controls-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
 }
 
 /* Main Content */
@@ -1126,31 +1337,79 @@ onMounted(() => {
 }
 
 /* Location */
-.map-placeholder {
-  width: 100%;
-  height: 200px;
-  background: #f3f4f6;
-  border: 2px dashed #d1d5db;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.occurrence-location-map {
   margin-bottom: 1rem;
 }
 
-.map-content {
-  text-align: center;
+.location-summary {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.location-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.location-icon {
+  width: 20px;
+  height: 20px;
   color: #6b7280;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
 }
 
-.map-icon {
-  width: 32px;
-  height: 32px;
-  margin: 0 auto 0.5rem;
-  display: block;
+.location-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
 }
 
-.location-details,
+.address {
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.coordinates {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.precision-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #ecfdf5;
+  border: 1px solid #d1fae5;
+  border-radius: 8px;
+  color: #065f46;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.precision-icon {
+  width: 16px;
+  height: 16px;
+  color: #059669;
+  flex-shrink: 0;
+}
+
 .metadata-content {
   display: flex;
   flex-direction: column;
@@ -1407,5 +1666,46 @@ onMounted(() => {
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+/* Noise Data Styles */
+.noise-data-section {
+  flex-direction: column;
+  align-items: start;
+}
+
+.noise-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.noise-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.375rem 0.5rem;
+  background-color: #f9fafb;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.noise-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.noise-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.noise-level {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
 }
 </style>

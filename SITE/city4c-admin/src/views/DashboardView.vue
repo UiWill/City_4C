@@ -84,6 +84,7 @@
             >
               <div class="occurrence-item__status" :class="`status--${occurrence.status.replace('_', '-')}`">
                 <div class="status-dot"></div>
+                <span class="status-text">{{ getStatusLabel(occurrence.status) }}</span>
               </div>
               
               <div class="occurrence-item__content">
@@ -264,6 +265,16 @@ const goToOccurrence = (id: string) => {
 
 const formatDate = (dateString: string) => {
   return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: ptBR })
+}
+
+const getStatusLabel = (status: string) => {
+  const labels: Record<string, string> = {
+    pending: 'Pendente',
+    in_progress: 'Em Andamento',
+    resolved: 'Resolvido',
+    rejected: 'Rejeitado'
+  }
+  return labels[status] || status
 }
 
 onMounted(() => {
@@ -448,6 +459,8 @@ onMounted(() => {
 .occurrence-item__status {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+  min-width: 120px;
 }
 
 .status-dot {
@@ -470,6 +483,29 @@ onMounted(() => {
 
 .status--rejected .status-dot {
   background-color: #ef4444;
+}
+
+.status-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status--pending .status-text {
+  color: #d97706;
+}
+
+.status--in-progress .status-text {
+  color: #2563eb;
+}
+
+.status--resolved .status-text {
+  color: #16a34a;
+}
+
+.status--rejected .status-text {
+  color: #dc2626;
 }
 
 .occurrence-item__content {
@@ -498,13 +534,15 @@ onMounted(() => {
 }
 
 .date {
-  color: #6b7280;
-  font-size: 0.75rem;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .address {
-  color: #6b7280;
-  font-size: 0.75rem;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
   margin: 0;
 }
 

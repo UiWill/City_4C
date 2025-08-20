@@ -40,10 +40,10 @@ BEGIN
     o.latitude,
     o.longitude,
     ROUND(
-      ST_Distance(
+      CAST(ST_Distance(
         o.location,
         ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326)
-      ) / 1000, 2
+      ) / 1000 AS NUMERIC), 2
     ) AS distance_km,
     o.status,
     t.name AS tag_name,

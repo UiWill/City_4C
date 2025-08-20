@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'camera_screen.dart';
 import 'login_screen.dart';
+import 'nearby_occurrences_screen.dart';
 import '../services/supabase_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -115,6 +116,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         icon: Icons.videocam,
                         onTap: () => _startRecording(context, isAgent: false),
                         isPrimary: true,
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      _buildActionButton(
+                        context,
+                        title: 'Ver Ocorrências Próximas',
+                        subtitle: 'Veja o que já foi reportado na região',
+                        icon: Icons.location_searching,
+                        onTap: () => _navigateToNearbyOccurrences(context),
+                        isPrimary: false,
                       ),
 
                       const SizedBox(height: 16),
@@ -257,6 +269,14 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const LoginScreen(),
+      ),
+    );
+  }
+
+  void _navigateToNearbyOccurrences(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const NearbyOccurrencesScreen(),
       ),
     );
   }
