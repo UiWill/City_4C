@@ -273,16 +273,16 @@ onMounted(() => {
 
 <style scoped>
 .dashboard {
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  height: 100%;
 }
 
 /* Stats Grid */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+  margin-bottom: 3rem;
 }
 
 .stat-card {
@@ -346,22 +346,24 @@ onMounted(() => {
 /* Dashboard Layout */
 .dashboard-content {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+  grid-template-columns: 2fr 1fr;
+  gap: 3rem;
+  height: 100%;
 }
 
 .dashboard-column {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 2rem;
 }
 
 .dashboard-card {
   background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  border: 1px solid #f3f4f6;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+  height: fit-content;
 }
 
 .dashboard-card h2 {

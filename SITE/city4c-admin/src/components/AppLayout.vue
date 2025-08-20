@@ -143,19 +143,19 @@ const toggleSidebar = () => {
 
 /* Sidebar */
 .sidebar {
-  width: 280px;
+  width: 260px;
   background: linear-gradient(180deg, #1e40af 0%, #1e3a8a 100%);
   color: white;
   display: flex;
   flex-direction: column;
-  position: fixed;
   height: 100vh;
   z-index: 100;
-  transition: width 0.3s ease;
+  flex-shrink: 0;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar--collapsed {
-  width: 64px;
+  width: 70px;
 }
 
 .sidebar__header {
@@ -305,34 +305,32 @@ const toggleSidebar = () => {
 /* Main content */
 .main-content {
   flex: 1;
-  margin-left: 280px;
   display: flex;
   flex-direction: column;
-  transition: margin-left 0.3s ease;
-}
-
-.sidebar--collapsed + .main-content {
-  margin-left: 64px;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .app-header {
   background: white;
-  padding: 1.5rem 2rem;
+  padding: 1rem 2rem;
   border-bottom: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .app-title {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.25rem;
+  font-weight: 600;
   color: #1f2937;
   margin: 0;
 }
 
 .app-content {
   flex: 1;
-  padding: 2rem;
+  padding: 1.5rem 2rem;
   overflow-y: auto;
+  background-color: #f9fafb;
 }
 
 /* Desktop-first design - remove mobile transforms */

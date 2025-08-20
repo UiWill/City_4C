@@ -81,24 +81,47 @@
       </p>
     </div>
 
-    <!-- Occurrences List -->
-    <div v-else class="occurrences-list">
-      <div 
-        v-for="occurrence in occurrences" 
-        :key="occurrence.id"
-        class="occurrence-card"
-        @click="goToOccurrence(occurrence.id)"
-      >
-        <!-- Card Header -->
-        <div class="occurrence-header">
-          <div class="occurrence-info">
-            <h3 class="occurrence-title">
-              {{ occurrence.title || 'Ocorrência sem título' }}
-            </h3>
-            <div class="occurrence-meta">
+    <!-- Occurrences Table -->
+    <div v-else class="occurrences-table-container">
+      <table class="occurrences-table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Título</th>
+            <th>Categoria</th>
+            <th>Prioridade</th>
+            <th>Localização</th>
+            <th>Data</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr 
+            v-for="occurrence in occurrences" 
+            :key="occurrence.id"
+            class="occurrence-row"
+            @click="goToOccurrence(occurrence.id)"
+          >
+            <td>
+              <span 
+                class="status-badge"
+                :class="`status-badge--${occurrence.status.replace('_', '-')}`"
+              >
+                {{ getStatusLabel(occurrence.status) }}
+              </span>
+            </td>
+            <td class="occurrence-title-cell">
+              <div class="title-content">
+                <h4>{{ occurrence.title || 'Ocorrência sem título' }}</h4>
+                <p v-if="occurrence.description" class="description-preview">
+                  {{ occurrence.description.substring(0, 80) }}{{ occurrence.description.length > 80 ? '...' : '' }}
+                </p>
+              </div>
+            </td>
+            <td>
               <span 
                 v-if="occurrence.tags" 
-                class="occurrence-tag"
+                class="category-tag"
                 :style="{ 
                   backgroundColor: occurrence.tags.color + '20', 
                   color: occurrence.tags.color 
@@ -106,117 +129,73 @@
               >
                 {{ occurrence.tags.name }}
               </span>
-              <span class="occurrence-date">
-                {{ formatDate(occurrence.created_at) }}
-              </span>
-            </div>
-          </div>
-
-          <div class="occurrence-status">
-            <span 
-              class="status-badge"
-              :class="`status-badge--${occurrence.status.replace('_', '-')}`"
-            >
-              {{ getStatusLabel(occurrence.status) }}
-            </span>
-            <div class="priority-indicator">
-              <svg 
-                v-for="i in 5" 
-                :key="i"
-                class="priority-star"
-                :class="{ 'priority-star--active': i <= occurrence.priority }"
-                viewBox="0 0 24 24" 
-                fill="currentColor"
-              >
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <!-- Card Content -->
-        <div class="occurrence-content">
-          <div class="occurrence-details">
-            <p v-if="occurrence.description" class="occurrence-description">
-              {{ occurrence.description }}
-            </p>
-            
-            <div class="occurrence-location">
-              <svg class="location-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-              </svg>
-              <span v-if="occurrence.address">
-                {{ occurrence.address }}
-              </span>
-              <span v-else class="coordinates">
-                {{ occurrence.latitude.toFixed(6) }}, {{ occurrence.longitude.toFixed(6) }}
-              </span>
-            </div>
-
-            <div v-if="occurrence.profiles" class="occurrence-reporter">
-              <svg class="reporter-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-              </svg>
-              <span>{{ occurrence.profiles.full_name || 'Agente' }}</span>
-              <span class="reporter-type">({{ occurrence.reporter_type === 'agent' ? 'Agente' : 'Cidadão' }})</span>
-            </div>
-            <div v-else class="occurrence-reporter">
-              <svg class="reporter-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-              </svg>
-              <span>Relato Anônimo</span>
-              <span class="reporter-type">(Cidadão)</span>
-            </div>
-          </div>
-
-          <!-- Video Thumbnail -->
-          <div class="video-thumbnail">
-            <div class="video-placeholder">
-              <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
-            </div>
-            <span class="video-duration">
-              {{ occurrence.video_duration ? `${occurrence.video_duration}s` : '~7s' }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Card Actions -->
-        <div class="occurrence-actions">
-          <button 
-            class="action-btn action-btn--primary"
-            @click.stop="goToOccurrence(occurrence.id)"
-          >
-            Ver Detalhes
-          </button>
-          
-          <div class="quick-actions">
-            <button 
-              v-if="occurrence.status === 'pending'"
-              class="action-btn action-btn--success"
-              @click.stop="updateStatus(occurrence.id, OccurrenceStatus.IN_PROGRESS)"
-            >
-              Aceitar
-            </button>
-            
-            <button 
-              v-if="occurrence.status === 'in_progress'"
-              class="action-btn action-btn--success"
-              @click.stop="updateStatus(occurrence.id, OccurrenceStatus.RESOLVED)"
-            >
-              Resolver
-            </button>
-            
-            <button 
-              class="action-btn action-btn--secondary"
-              @click.stop="togglePriority(occurrence)"
-            >
-              Prioridade {{ occurrence.priority }}
-            </button>
-          </div>
-        </div>
-      </div>
+            </td>
+            <td>
+              <div class="priority-indicator">
+                <svg 
+                  v-for="i in 5" 
+                  :key="i"
+                  class="priority-star"
+                  :class="{ 'priority-star--active': i <= occurrence.priority }"
+                  viewBox="0 0 24 24" 
+                  fill="currentColor"
+                >
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+              </div>
+            </td>
+            <td class="location-cell">
+              <div class="location-info">
+                <svg class="location-icon" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+                <span v-if="occurrence.address">
+                  {{ occurrence.address.length > 40 ? occurrence.address.substring(0, 40) + '...' : occurrence.address }}
+                </span>
+                <span v-else>
+                  {{ occurrence.latitude.toFixed(4) }}, {{ occurrence.longitude.toFixed(4) }}
+                </span>
+              </div>
+            </td>
+            <td>{{ formatDate(occurrence.created_at) }}</td>
+            <td class="actions-cell">
+              <div class="quick-actions" @click.stop>
+                <button 
+                  v-if="occurrence.status === 'pending'"
+                  class="action-btn action-btn--success"
+                  @click="updateStatus(occurrence.id, OccurrenceStatus.IN_PROGRESS)"
+                  title="Aceitar"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                  </svg>
+                </button>
+                
+                <button 
+                  v-if="occurrence.status === 'in_progress'"
+                  class="action-btn action-btn--success"
+                  @click="updateStatus(occurrence.id, OccurrenceStatus.RESOLVED)"
+                  title="Resolver"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                  </svg>
+                </button>
+                
+                <button 
+                  class="action-btn action-btn--primary"
+                  @click="goToOccurrence(occurrence.id)"
+                  title="Ver detalhes"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- Pagination -->
@@ -331,16 +310,6 @@ const updateStatus = async (id: string, newStatus: OccurrenceStatus) => {
   }
 }
 
-const togglePriority = async (occurrence: Occurrence) => {
-  const newPriority = occurrence.priority === 5 ? 1 : occurrence.priority + 1
-  try {
-    await ApiService.updateOccurrencePriority(occurrence.id, newPriority)
-    await loadOccurrences()
-  } catch (error) {
-    console.error('Error updating priority:', error)
-  }
-}
-
 const clearFilters = () => {
   filters.status = ''
   filters.tag_id = ''
@@ -405,14 +374,22 @@ const downloadCSV = (content: string, filename: string) => {
   const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
   const link = document.createElement('a')
   const url = URL.createObjectURL(blob)
-  
   link.setAttribute('href', url)
   link.setAttribute('download', filename)
   link.style.visibility = 'hidden'
-  
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
+}
+
+const getStatusLabel = (status: OccurrenceStatus): string => {
+  const labels: Record<OccurrenceStatus, string> = {
+    [OccurrenceStatus.PENDING]: 'Pendente',
+    [OccurrenceStatus.IN_PROGRESS]: 'Em Andamento',
+    [OccurrenceStatus.RESOLVED]: 'Resolvido',
+    [OccurrenceStatus.REJECTED]: 'Rejeitado'
+  }
+  return labels[status] || status
 }
 
 const previousPage = () => {
@@ -431,103 +408,143 @@ const formatDate = (dateString: string) => {
   return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: ptBR })
 }
 
-const getStatusLabel = (status: string) => {
-  const labels: Record<string, string> = {
-    pending: 'Pendente',
-    in_progress: 'Em Andamento',
-    resolved: 'Resolvido',
-    rejected: 'Rejeitado'
-  }
-  return labels[status] || status
-}
-
 // Watch for filter changes
-watch([filters, currentPage], () => {
+watch(filters, () => {
+  currentPage.value = 1
   loadOccurrences()
 }, { deep: true })
 
-onMounted(() => {
-  loadTags()
+watch(currentPage, () => {
   loadOccurrences()
+})
+
+onMounted(async () => {
+  await Promise.all([loadTags(), loadOccurrences()])
 })
 </script>
 
 <style scoped>
 .occurrences-view {
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  height: 100%;
 }
 
-/* Filters */
+/* Filters Section */
 .filters-section {
   background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  padding: 2rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
 }
 
 .filters-row {
-  display: flex;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2rem;
   align-items: end;
-  flex-wrap: wrap;
 }
 
 .filter-group {
   display: flex;
   flex-direction: column;
-  min-width: 120px;
+  gap: 0.5rem;
 }
 
 .filter-label {
-  margin-bottom: 0.5rem;
-  font-weight: 500;
+  font-weight: 600;
   color: #374151;
   font-size: 0.875rem;
 }
 
-.filter-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-left: auto;
+.form-select {
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  font-size: 0.875rem;
+  transition: all 0.2s;
 }
 
-.filter-actions .btn svg {
+.form-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.filter-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  font-size: 0.875rem;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 2px solid #e5e7eb;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn svg {
   width: 16px;
   height: 16px;
 }
 
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Results */
+/* Results Summary */
 .results-summary {
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
   color: #6b7280;
 }
 
-/* Loading and Empty States */
+/* States */
 .loading-state, .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 3rem;
+  padding: 4rem 2rem;
   text-align: center;
   color: #6b7280;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
 }
 
 .spinner {
-  width: 32px;
-  height: 32px;
-  border: 2px solid #f3f4f6;
-  border-top: 2px solid #2563eb;
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f4f6;
+  border-top: 3px solid #3b82f6;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
@@ -540,202 +557,143 @@ onMounted(() => {
   margin-bottom: 1rem;
 }
 
-.empty-state h3 {
-  margin: 0 0 0.5rem 0;
-  color: #374151;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-/* Occurrences List */
-.occurrences-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.occurrence-card {
+/* Table */
+.occurrences-table-container {
   background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  border: 1px solid #f3f4f6;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+}
+
+.occurrences-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.occurrences-table th {
+  background: #f9fafb;
+  padding: 1rem 1.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.875rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.occurrence-row {
   cursor: pointer;
   transition: all 0.2s;
+  border-bottom: 1px solid #f3f4f6;
 }
 
-.occurrence-card:hover {
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-  border-color: #e5e7eb;
+.occurrence-row:hover {
+  background: #f9fafb;
 }
 
-.occurrence-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-  margin-bottom: 1rem;
+.occurrences-table td {
+  padding: 1rem 1.5rem;
+  vertical-align: top;
 }
 
-.occurrence-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0 0 0.5rem 0;
-}
-
-.occurrence-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.occurrence-tag {
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.occurrence-date {
-  color: #6b7280;
-  font-size: 0.875rem;
-}
-
-.occurrence-status {
-  display: flex;
-  flex-direction: column;
-  align-items: end;
-  gap: 0.5rem;
-}
-
+/* Status Badge */
 .status-badge {
   padding: 0.25rem 0.75rem;
   border-radius: 12px;
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .status-badge--pending {
-  background-color: #fef3c7;
+  background: #fef3c7;
   color: #d97706;
 }
 
 .status-badge--in-progress {
-  background-color: #dbeafe;
+  background: #dbeafe;
   color: #2563eb;
 }
 
 .status-badge--resolved {
-  background-color: #dcfce7;
+  background: #dcfce7;
   color: #16a34a;
 }
 
 .status-badge--rejected {
-  background-color: #fee2e2;
+  background: #fee2e2;
   color: #dc2626;
 }
 
+/* Title Cell */
+.occurrence-title-cell {
+  min-width: 300px;
+}
+
+.title-content h4 {
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.25rem 0;
+  font-size: 0.875rem;
+}
+
+.description-preview {
+  color: #6b7280;
+  font-size: 0.75rem;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Category Tag */
+.category-tag {
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Priority */
 .priority-indicator {
   display: flex;
   gap: 2px;
 }
 
 .priority-star {
-  width: 12px;
-  height: 12px;
-  color: #d1d5db;
+  width: 14px;
+  height: 14px;
+  color: #e5e7eb;
 }
 
 .priority-star--active {
   color: #f59e0b;
 }
 
-/* Occurrence Content */
-.occurrence-content {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
+/* Location */
+.location-cell {
+  min-width: 200px;
 }
 
-.occurrence-details {
-  flex: 1;
-}
-
-.occurrence-description {
-  color: #374151;
-  margin: 0 0 0.75rem 0;
-  line-height: 1.5;
-}
-
-.occurrence-location,
-.occurrence-reporter {
+.location-info {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.location-icon {
+  width: 14px;
+  height: 14px;
   color: #6b7280;
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
-}
-
-.location-icon,
-.reporter-icon {
-  width: 16px;
-  height: 16px;
   flex-shrink: 0;
-}
-
-.coordinates {
-  font-family: monospace;
-  font-size: 0.8rem;
-}
-
-.reporter-type {
-  color: #9ca3af;
-}
-
-/* Video Thumbnail */
-.video-thumbnail {
-  position: relative;
-  width: 120px;
-  height: 80px;
-  flex-shrink: 0;
-}
-
-.video-placeholder {
-  width: 100%;
-  height: 100%;
-  background: #1f2937;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.play-icon {
-  width: 24px;
-  height: 24px;
-  color: white;
-}
-
-.video-duration {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.75rem;
 }
 
 /* Actions */
-.occurrence-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #f3f4f6;
+.actions-cell {
+  width: 120px;
 }
 
 .quick-actions {
@@ -744,28 +702,23 @@ onMounted(() => {
 }
 
 .action-btn {
-  padding: 0.5rem 1rem;
+  padding: 0.5rem;
+  border: none;
   border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border: 1px solid;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.2s;
 }
 
-.action-btn--primary {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: white;
-}
-
-.action-btn--primary:hover {
-  background: #1d4ed8;
+.action-btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 .action-btn--success {
   background: #16a34a;
-  border-color: #16a34a;
   color: white;
 }
 
@@ -773,14 +726,13 @@ onMounted(() => {
   background: #15803d;
 }
 
-.action-btn--secondary {
-  background: white;
-  border-color: #d1d5db;
-  color: #374151;
+.action-btn--primary {
+  background: #3b82f6;
+  color: white;
 }
 
-.action-btn--secondary:hover {
-  background: #f9fafb;
+.action-btn--primary:hover {
+  background: #2563eb;
 }
 
 /* Pagination */
@@ -790,41 +742,20 @@ onMounted(() => {
   align-items: center;
   gap: 1rem;
   margin-top: 2rem;
-  padding: 1rem;
+  padding: 2rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
 }
 
 .pagination-info {
   color: #6b7280;
-  font-size: 0.875rem;
+  font-weight: 500;
 }
 
-@media (max-width: 768px) {
-  .filters-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .filter-actions {
-    margin-left: 0;
-    justify-content: stretch;
-  }
-  
-  .occurrence-content {
-    flex-direction: column;
-  }
-  
-  .video-thumbnail {
-    width: 100%;
-    height: 120px;
-  }
-  
-  .occurrence-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .quick-actions {
-    justify-content: center;
-  }
+/* Animations */
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 </style>
