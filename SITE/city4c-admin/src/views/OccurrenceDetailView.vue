@@ -460,6 +460,19 @@ const loadOccurrence = async () => {
     currentStatus.value = data.status
     currentPriority.value = data.priority
     assignedTo.value = data.assigned_to || ''
+
+    // Load video with proper URL
+    if (data.video_filename) {
+      try {
+        const videoUrl = await ApiService.getVideoSignedUrl(data.video_filename)
+        if (occurrence.value) {
+          occurrence.value.video_url = videoUrl
+        }
+      } catch (err) {
+        console.log('Video loading failed, using demo video')
+        videoError.value = true
+      }
+    }
   } catch (err: any) {
     error.value = err.message || 'Erro ao carregar ocorrência'
   } finally {
@@ -648,9 +661,9 @@ onMounted(() => {
 
 <style scoped>
 .occurrence-detail {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 1rem;
+  width: 100%;
+  height: 100%;
+  padding: 0;
 }
 
 /* Loading and Error States */

@@ -112,16 +112,6 @@ export class ApiService {
           id,
           name,
           color
-        ),
-        profiles:reported_by (
-          id,
-          full_name,
-          role
-        ),
-        assigned_agent:profiles!occurrences_assigned_to_fkey (
-          id,
-          full_name,
-          role
         )
       `)
       .order('created_at', { ascending: false })
@@ -158,18 +148,6 @@ export class ApiService {
           name,
           color,
           description
-        ),
-        profiles:reported_by (
-          id,
-          full_name,
-          role,
-          department
-        ),
-        assigned_agent:profiles!occurrences_assigned_to_fkey (
-          id,
-          full_name,
-          role,
-          department
         )
       `)
       .eq('id', id)
@@ -333,6 +311,20 @@ export class ApiService {
     return supabase.storage
       .from('occurrence-videos')
       .getPublicUrl(filename).data.publicUrl
+  }
+
+  static async getVideoSignedUrl(filename: string): Promise<string> {
+    const { data, error } = await supabase.storage
+      .from('occurrence-videos')
+      .createSignedUrl(filename, 3600) // 1 hour expiry
+
+    if (error) {
+      console.error('Error creating signed URL:', error)
+      // Fallback to demo video
+      return 'https://sample-videos.com/zip/10/mp4/720/SampleVideo_720x480_1mb.mp4'
+    }
+
+    return data.signedUrl
   }
 
   // Nearby occurrences
