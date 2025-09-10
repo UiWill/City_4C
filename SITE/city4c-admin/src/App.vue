@@ -27,10 +27,14 @@ const route = useRoute()
 const { isAuthenticated, isLoading, initialize } = useAuth()
 
 // Routes that don't need the main layout
-const noLayoutRoutes = ['login', 'not-found']
+const noLayoutRoutes = ['login', 'register', 'not-found', 'home']
 
 const shouldShowLayout = computed(() => {
-  return isAuthenticated.value && !noLayoutRoutes.includes(route.name as string)
+  // Show layout only for sistema routes when authenticated
+  return isAuthenticated.value && 
+         route.path.startsWith('/sistema/') && 
+         !noLayoutRoutes.includes(route.name as string) &&
+         route.meta?.layout !== 'none'
 })
 
 onMounted(async () => {
