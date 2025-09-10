@@ -646,7 +646,33 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
-/* Import vitrine styles - will be created next */
+<style>
+/* Import vitrine styles globally */
 @import '@/assets/vitrine.css';
+
+/* Force hero background - overrides any conflicts */
+.vitrine .hero {
+  background: #1a1a2e !important;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%) !important;
+  min-height: 100vh !important;
+  color: white !important;
+}
+
+/* Ensure all hero text is white */
+.vitrine .hero * {
+  color: inherit !important;
+}
+
+.vitrine .hero h1,
+.vitrine .hero p,
+.vitrine .hero span:not(.gradient-text) {
+  color: white !important;
+}
+
+.vitrine .gradient-text {
+  background: linear-gradient(135deg, #C9AA1E 0%, #E6C547 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
 </style>
