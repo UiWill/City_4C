@@ -23,7 +23,9 @@
       "Bash(cp:*)",
       "Bash(sips:*)",
       "Bash(mkdir:*)",
-      "Bash(open index.html)"
+      "Bash(open index.html)",
+      "WebFetch(domain:uiwill.github.io)",
+      "WebFetch(domain:city4c.com)"
     ],
     "deny": []
   }
